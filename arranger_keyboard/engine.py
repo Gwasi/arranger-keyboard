@@ -488,40 +488,61 @@ class Engine:
     def _play_step(self, s):
         S = self.style
         L = S["len"]
+        sp = 60.0 / self.tempo / 4.0
+        fill = (self.pend and self.pend != "I" and self.sec not in ("E", "I") and s >= L - 4)
+
+        intro_pat = S.get("intro") or {}
+        fill_pat = S.get("fill") or {}
+        ending_pat = S.get("ending") or {}
+
+        def has_pat(pat):
+            return bool(pat and any(pat.get(k) for k in ["kick","snare","hat","open","crash","comp","bass"]))
+
+        # Ending with pattern support
+        if self.sec == "E":
+            if has_pat(ending_pat):
+                P = {**S, **ending_pat}
+            else:
+                if s == 0:
+                    self._drum("kick", 1.0)
+                    self._drum("snare", 1.0)
+                    self._drum("crash", 0.9)
+                    self._drum("openhat", 1.0, True)
+                    if self.acmp and self.chord:
+                        bdur = sp * L * 0.8
+                        cdur = sp * L * 0.9
+                        self._bass(self.chord, 0, bdur)
+                        self._comp(self.chord, cdur)
+                        self._mark_active("bass", "bass", 0, 0.5, bdur)
+                        self._mark_active("comp", self.style["comp_voice"], 0, self.style.get("comp_vel", 0.14), cdur)
+                return
+
+        # Base pattern
         P = dict(S)
         if self.sec == "B" and "B" in S:
             P.update(S["B"])
-        sp = 60.0 / self.tempo / 4.0
-        fill = (self.pend and self.pend != "I"
-                and self.sec not in ("E", "I") and s >= L - 4)
-        if self.sec == "E":
-            if s == 0:
-                self._drum("kick", 1.0)
-                self._drum("snare", 1.0)
-                self._drum("crash", 0.9)
-                self._drum("openhat", 1.0, True)
-                if self.acmp and self.chord:
-                    bdur = sp * L * 0.8
-                    cdur = sp * L * 0.9
-                    self._bass(self.chord, 0, bdur)
-                    self._comp(self.chord, cdur)
-                    self._mark_active("bass", "bass", 0, 0.5, bdur)
-                    self._mark_active(
-                        "comp", self.style["comp_voice"], 0,
-                        self.style.get("comp_vel", 0.14), cdur)
-            return
+
+        intro_generated = self.sec == "I" and not has_pat(intro_pat)
+        fill_generated = fill and not has_pat(fill_pat)
+
+        if self.sec == "I" and not intro_generated:
+            P = {**S, **intro_pat}
+        if fill and not fill_generated:
+            P = {**S, **fill_pat}
+        if self.sec == "E" and has_pat(ending_pat):
+            P = {**S, **ending_pat}
 
         if s == 0:
             if self.crash_next:
                 self._drum("crash", 1.0)
                 self.crash_next = False
 
-        if self.sec == "I":
+        if self.sec == "I" and intro_generated:
             if s % 4 == 0:
                 self._drum("kick", 1.0)
             if s % 2 == 0:
                 self._drum("openhat", 1.0 if s % 4 == 0 else 0.5, True)
-        elif fill:
+        elif fill and fill_generated:
             if s == L - 4:
                 self._drum("kick", 1.0)
             self._drum("snare", 0.5 + 0.12 * (s - (L - 4)))

@@ -1282,6 +1282,18 @@ class App:
         main_b["drums"]["crash"] = pad_pat(bsec.get("crash", ""), length)
         main_b["bass"] = normalize_bass(bsec.get("bass", style.get("bass", [])))
         main_b["comp"] = pad_pat(bsec.get("comp", style.get("comp", "")), length)
+        # intro / fill / ending from style if present
+        for sec in ["intro", "fill", "ending"]:
+            sec_pat = style.get(sec, {})
+            if isinstance(sec_pat, dict):
+                sec_sec = sections[sec]
+                sec_sec["drums"]["kick"] = pad_pat(sec_pat.get("kick", ""), length)
+                sec_sec["drums"]["snare"] = pad_pat(sec_pat.get("snare", ""), length)
+                sec_sec["drums"]["hat"] = pad_pat(sec_pat.get("hat", ""), length)
+                sec_sec["drums"]["open"] = pad_pat(sec_pat.get("open", ""), length)
+                sec_sec["drums"]["crash"] = pad_pat(sec_pat.get("crash", ""), length)
+                sec_sec["bass"] = normalize_bass(sec_pat.get("bass", []))
+                sec_sec["comp"] = pad_pat(sec_pat.get("comp", ""), length)
         return {
             "name": name,
             "bpm": bpm,
@@ -1333,6 +1345,21 @@ class App:
             bsec["bass"] = main_b_bass
         if changed:
             style["B"] = bsec
+        # export intro / fill / ending patterns
+        for sec in ["intro", "fill", "ending"]:
+            drums, bass, comp = get_sec(sec)
+            sec_dict = {
+                "kick": clean(drums.get("kick","")),
+                "snare": clean(drums.get("snare","")),
+                "hat": clean(drums.get("hat","")),
+                "open": clean(drums.get("open","")),
+                "crash": clean(drums.get("crash","")),
+                "bass": bass,
+                "comp": clean(comp),
+            }
+            # prune empty sections to keep file small
+            if any(sec_dict[k] for k in ["kick","snare","hat","open","crash","comp"]) or sec_dict["bass"]:
+                style[sec] = sec_dict
         return style
 
     def _open_style_editor(self):
