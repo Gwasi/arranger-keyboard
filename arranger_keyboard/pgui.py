@@ -1282,11 +1282,11 @@ class App:
         main_b["drums"]["crash"] = pad_pat(bsec.get("crash", ""), length)
         main_b["bass"] = normalize_bass(bsec.get("bass", style.get("bass", [])))
         main_b["comp"] = pad_pat(bsec.get("comp", style.get("comp", "")), length)
-        # intro / fill / ending from style if present
+        # intro / fill / ending from style if present, else generate defaults matching engine generation
         for sec in ["intro", "fill", "ending"]:
             sec_pat = style.get(sec, {})
-            if isinstance(sec_pat, dict):
-                sec_sec = sections[sec]
+            sec_sec = sections[sec]
+            if isinstance(sec_pat, dict) and any(sec_pat.get(k) for k in ["kick","snare","hat","open","crash","comp","bass"]):
                 sec_sec["drums"]["kick"] = pad_pat(sec_pat.get("kick", ""), length)
                 sec_sec["drums"]["snare"] = pad_pat(sec_pat.get("snare", ""), length)
                 sec_sec["drums"]["hat"] = pad_pat(sec_pat.get("hat", ""), length)
@@ -1294,6 +1294,41 @@ class App:
                 sec_sec["drums"]["crash"] = pad_pat(sec_pat.get("crash", ""), length)
                 sec_sec["bass"] = normalize_bass(sec_pat.get("bass", []))
                 sec_sec["comp"] = pad_pat(sec_pat.get("comp", ""), length)
+            else:
+                # generate default patterns matching engine generation
+                drums = sec_sec["drums"]
+                if sec == "intro":
+                    drums["kick"] = ''.join('x' if i % 4 == 0 else '.' for i in range(length))
+                    drums["open"] = ''.join('x' if i % 2 == 0 else '.' for i in range(length))
+                    drums["snare"] = '.' * length
+                    drums["hat"] = '.' * length
+                    drums["crash"] = '.' * length
+                    sec_sec["bass"] = []
+                    sec_sec["comp"] = '.' * length
+                elif sec == "fill":
+                    # kick at L-4, snare for last 4 steps, open at L-1
+                    pattern = list('.' * length)
+                    if length >= 4:
+                        pattern[length - 4] = 'x'
+                    for i in range(length - 3, length):
+                        if 0 <= i < length:
+                            pattern[i] = 'x'
+                    pattern[length - 1] = 'x'  # open hat
+                    drums["kick"] = ''.join(pattern)
+                    drums["snare"] = ''.join('x' if i >= length - 4 else '.' for i in range(length))
+                    drums["open"] = ''.join('x' if i == length - 1 else '.' for i in range(length))
+                    drums["hat"] = '.' * length
+                    drums["crash"] = '.' * length
+                    sec_sec["bass"] = []
+                    sec_sec["comp"] = '.' * length
+                elif sec == "ending":
+                    drums["kick"] = 'x' + '.' * (length - 1)
+                    drums["snare"] = 'x' + '.' * (length - 1)
+                    drums["crash"] = 'x' + '.' * (length - 1)
+                    drums["open"] = 'x' + '.' * (length - 1)
+                    drums["hat"] = '.' * length
+                    sec_sec["bass"] = []
+                    sec_sec["comp"] = '.' * length
         return {
             "name": name,
             "bpm": bpm,
