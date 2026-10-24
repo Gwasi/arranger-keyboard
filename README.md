@@ -18,6 +18,16 @@ Arranger Keyboard is a compact, offline arranger workstation focused on quick so
 
 The current prototype focuses on a Drums + Bass editing experience. Comp, Pad, Piano tracks are intentionally left out of the prototype to keep the UI lean and fast.
 
+## Plugins
+
+Arranger Keyboard integrates macOS Audio Units for instruments.
+
+* Plugin type discovered: `au:AudioUnitTypeMusicDevice` via AVFoundation `AVAUDIOUNITCOMPONENTMANAGER`.
+* Catalog is stored in `~/Library/Application Support/Arranger Keyboard/plugins.json`.
+* Plugins are discovered at runtime from your system Audio Units and can be added/removed from the manager UI. Added plugins are listed as instruments and can be used for playback.
+
+This is a Music Device plugin catalog only — effects and MIDI processors are not currently exposed in the UI.
+
 ## Build
 
 Requires Python 3.9+ and PyInstaller.
